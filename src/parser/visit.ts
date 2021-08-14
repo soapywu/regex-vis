@@ -1,55 +1,50 @@
 import * as AST from "./ast"
-export type Path = { node: AST.Node; nodeList: AST.Node[] }[]
+
 export function visit(
-  ast: AST.Regex | AST.Node[],
-  id: string,
-  callback: (node: AST.Node, nodeList: AST.Node[], path: Path) => void,
-  path: Path = []
-): true | void {
-  const nodes = Array.isArray(ast) ? ast : ast.body
-  for (let i = 0; i < nodes.length; i++) {
-    const node = nodes[i]
-    if (node.id === id) {
-      callback(node, nodes, path)
-      return true
-    }
-
-    if (
-      node.type === "choice" ||
-      node.type === "group" ||
-      node.type === "lookAroundAssertion"
-    ) {
-      path.push({ nodeList: nodes, node })
-      if (node.type === "choice") {
-        const branches = node.branches
-        for (let i = 0; i < branches.length; i++) {
-          if (visit(branches[i], id, callback, path)) {
-            return true
-          }
-        }
-      } else {
-        if (visit(node.children, id, callback, path)) {
-          return true
-        }
-      }
-      path.pop()
-    }
-  }
-}
-
-export function visitTree(ast: AST.Regex, callback: (node: AST.Node) => void) {
-  let stack = ast.body.slice()
+  ast: AST.Regex,
+  callback: (
+    node: AST.Node,
+    nodeList: AST.Node[],
+    index: number,
+    parent: AST.ParentNode
+  ) => void
+) {
+  let stack: {
+    node: AST.Node
+    nodeList: AST.Node[]
+    index: number
+    parent: AST.ParentNode
+  }[] = ast.body.map((node, index) => ({
+    node,
+    nodeList: ast.body,
+    index,
+    parent: ast,
+  }))
   while (stack.length !== 0) {
-    const cur = stack.shift() as AST.Node
-    callback(cur)
-    if (cur.type === "group" || cur.type === "lookAroundAssertion") {
-      stack = cur.children.concat(stack)
+    const { node, nodeList, index, parent } = stack.shift()!
+    callback(node, nodeList, index, parent)
+    if (node.type === "group" || node.type === "lookAroundAssertion") {
+      stack = stack.concat(
+        node.children.map((child, index) => ({
+          node: child,
+          nodeList: node.children,
+          index,
+          parent: node,
+        }))
+      )
     }
-    if (cur.type === "choice") {
-      const branches = cur.branches
+    if (node.type === "choice") {
+      const branches = node.branches
       for (let i = branches.length - 1; i >= 0; i--) {
         const branch = branches[i]
-        stack = branch.concat(stack)
+        stack = stack.concat(
+          branch.map((child, index) => ({
+            node: child,
+            nodeList: branch,
+            index,
+            parent: node,
+          }))
+        )
       }
     }
   }
@@ -60,11 +55,7 @@ export function getNodeById(
   id: string
 ): {
   node: AST.Node
-  parent:
-    | AST.GroupNode
-    | AST.Regex
-    | AST.LookAroundAssertionNode
-    | AST.ChoiceNode
+  parent: AST.ParentNode
   nodeList: AST.Node[]
   index: number
 } {
@@ -119,28 +110,20 @@ export function getNodeById(
   throw new Error("unreachable")
 }
 
-export function getNodesByIds(ast: AST.Regex, ids: string[]): AST.Node[] {
-  if (ids.length === 0) {
-    return []
+export function getNodesByIds(
+  ast: AST.Regex,
+  ids: string[]
+): {
+  nodes: AST.Node[]
+  parent: AST.ParentNode
+  nodeList: AST.Node[]
+  index: number
+} {
+  const { parent, nodeList, index } = getNodeById(ast, ids[0])
+  return {
+    nodes: nodeList.slice(index, index + ids.length),
+    parent,
+    nodeList,
+    index,
   }
-  const headId = ids[0]
-  let cur!: AST.Node
-  let stack = ast.body.slice()
-  while (stack.length !== 0) {
-    cur = stack.shift() as AST.Node
-    if (cur!.id === headId) {
-      break
-    }
-    if (cur.type === "group" || cur.type === "lookAroundAssertion") {
-      stack = stack.concat(cur.children)
-    }
-    if (cur.type === "choice") {
-      const branches = cur.branches
-      for (let i = branches.length - 1; i >= 0; i--) {
-        const branch = branches[i]
-        stack = stack.concat(branch)
-      }
-    }
-  }
-  return [cur, ...stack.slice(0, ids.length - 1)]
 }
