@@ -1,6 +1,6 @@
 import React from "react"
 import { Link } from "react-router-dom"
-import { useTheme, Code } from "@geist-ui/react"
+import { useTheme, Code } from "@geist-ui/core"
 import {
   WholeNumbersSvg,
   DecimalNumberSvg,
@@ -41,13 +41,18 @@ const samples = [
 ]
 const Samples: React.FC<{}> = () => {
   const { palette } = useTheme()
-
+  const isLiteral = localStorage.getItem("isLiteral") === "1"
   return (
     <>
       <div className="wrapper">
         <div className="content">
           {samples.map(({ desc, Svg, regex }) => (
-            <Link to={`/?r=${encodeURIComponent(regex)}`} key={regex}>
+            <Link
+              to={`/?r=${encodeURIComponent(
+                isLiteral ? regex : regex.slice(1, regex.length - 1)
+              )}`}
+              key={regex}
+            >
               <div className="sample">
                 <p>
                   {desc}: <Code>{regex}</Code>

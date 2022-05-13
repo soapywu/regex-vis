@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react"
-import { Divider, useTheme } from "@geist-ui/react"
+import { Divider, useTheme } from "@geist-ui/core"
 import ContentEditor from "./features/content"
 import Group from "./features/group"
 import Expression from "./features/expression"
@@ -12,7 +12,7 @@ import { NodesInfo } from "./utils"
 import { getNodesByIds } from "@/parser/visit"
 import { astAtom, selectedIdsAtom, useAtomValue } from "@/atom"
 
-const InfoItem: React.FC<{}> = () => {
+const InfoItem: React.FC<{ isLiteral: boolean }> = ({ isLiteral }) => {
   const { layout } = useTheme()
 
   const [nodes, setNodes] = useState<AST.Node[]>([])
@@ -39,15 +39,15 @@ const InfoItem: React.FC<{}> = () => {
   } = nodesInfo
 
   useEffect(() => {
-    const nodesInfo = getInfoFromNodes(nodes)
+    const nodesInfo = getInfoFromNodes(nodes, isLiteral)
     setNodesInfo(nodesInfo)
-  }, [nodes])
+  }, [nodes, isLiteral])
 
   return (
     <>
       <div className="container">
         <Insert ast={ast} nodes={nodes} />
-        <Divider />
+        <Divider mt="24px" />
         <Expression expression={expression} />
         {content && (
           <ContentEditor content={content} id={id} quantifier={quantifier} />

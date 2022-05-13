@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from "react"
-import ChevronsRight from "@geist-ui/react-icons/chevronsRight"
-import ChevronsLeft from "@geist-ui/react-icons/chevronsLeft"
-import { Tabs, useTheme, Button } from "@geist-ui/react"
+import ChevronsRight from "@geist-ui/icons/chevronsRight"
+import ChevronsLeft from "@geist-ui/icons/chevronsLeft"
+import { Tabs, useTheme, Button } from "@geist-ui/core"
 import EditTab from "./edit-tab"
 import LegendTab from "./legend-tab"
 import TestTab from "./test-tab"
-import { useEventListener } from "@/utils/hooks"
+import { useEvent } from "react-use"
 import {
   dispatchRemove,
   dispatchUndo,
@@ -17,7 +17,7 @@ import {
 } from "@/atom"
 
 type Tab = "legend" | "edit" | "test"
-const Editor: React.FC<{}> = () => {
+const Editor: React.FC<{ isLiteral: boolean }> = ({ isLiteral }) => {
   const selectedIds = useAtomValue(selectedIdsAtom)
   const editorCollapsed = useAtomValue(editorCollapsedAtom)
 
@@ -39,7 +39,7 @@ const Editor: React.FC<{}> = () => {
   const undo = () => dispatchUndo()
   const redo = () => dispatchRedo()
 
-  useEventListener("keydown", (e: Event) => {
+  useEvent("keydown", (e: Event) => {
     const event = e as KeyboardEvent
     const { key } = event
     if (key === "Backspace") {
@@ -76,7 +76,7 @@ const Editor: React.FC<{}> = () => {
               <LegendTab />
             </Tabs.Item>
             <Tabs.Item value="edit" label="Edit" disabled={editDisabled}>
-              <EditTab />
+              <EditTab isLiteral={isLiteral} />
             </Tabs.Item>
             <Tabs.Item value="test" label="Test">
               <TestTab />
@@ -145,7 +145,10 @@ const Editor: React.FC<{}> = () => {
         .container > :global(.tabs > header) {
           padding: 0 12px;
         }
-        .container :global(.tabs > header > .tab) {
+        .container > :global(.tabs > header .highlight) {
+          display: none;
+        }
+        .container :global(.tabs > header .tab) {
           width: 33.3%;
           margin: 0;
           justify-content: center;

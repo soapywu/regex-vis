@@ -1,33 +1,26 @@
-import React, { useRef, useState, useEffect } from "react"
-import { useTheme, Code, Dot } from "@geist-ui/react"
-import { nanoid } from "nanoid"
+import React, { useState } from "react"
+import { useTheme, Code, Dot } from "@geist-ui/core"
 import { RenderNode, RenderConnect, Box } from "./types"
-import { parse, gen, AST } from "@/parser"
-import { useUpdateEffect } from "@/utils/hooks"
+import { useUpdateEffect } from "react-use"
+import { AST } from "@/parser"
 import renderEngine from "./rendering-engine"
 import SvgContainer from "./svg-container"
-import {
-  astAtom,
-  selectedIdsAtom,
-  useAtomValue,
-  dispatchSetAst,
-  dispatchSelectNodes,
-} from "@/atom"
+import { selectedIdsAtom, useAtomValue, dispatchSelectNodes } from "@/atom"
 type Props = {
   regex: string
+  ast: AST.Regex
   minimum?: boolean
-  onChange?: (regex: string) => void
+  errorMsg?: string | null
 }
-const head: AST.RootNode = { id: nanoid(), type: "root" }
-const tail: AST.RootNode = { id: nanoid(), type: "root" }
-const Graph: React.FC<Props> = ({ regex, minimum = false, onChange }) => {
-  const { palette } = useTheme()
-  const ast = useAtomValue(astAtom)
-  const selectedIds = useAtomValue(selectedIdsAtom)
-  const [error, setError] = useState<null | string>(null)
 
-  const shouldGen = useRef(true)
-  const regexRef = useRef<string>()
+const Graph: React.FC<Props> = ({
+  regex,
+  ast,
+  errorMsg = null,
+  minimum = false,
+}) => {
+  const { palette } = useTheme()
+  const selectedIds = useAtomValue(selectedIdsAtom)
 
   const [renderInfo, setRenderInfo] = useState<{
     width: number
@@ -41,35 +34,9 @@ const Graph: React.FC<Props> = ({ regex, minimum = false, onChange }) => {
     connects: [],
   })
 
-  useEffect(() => {
-    if (regex !== regexRef.current) {
-      const ast = parse(regex)
-      if (ast.type === "regex") {
-        setError(null)
-        const { id, body } = ast
-        shouldGen.current = false
-        dispatchSetAst({ ...ast, body: [head, ...body, tail] })
-      } else {
-        regexRef.current = regex
-        setError(ast.message)
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [regex])
-
   useUpdateEffect(() => {
     const renderInfo = renderEngine.render(ast)
     setRenderInfo(renderInfo)
-    if (shouldGen.current) {
-      const nextRegex = gen(ast)
-      if (nextRegex !== regexRef.current) {
-        regexRef.current = nextRegex
-        onChange && onChange(nextRegex)
-      }
-    } else {
-      shouldGen.current = true
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ast])
 
   const onDragSelect = (box: Box) => {
@@ -80,9 +47,9 @@ const Graph: React.FC<Props> = ({ regex, minimum = false, onChange }) => {
   return (
     <>
       <div className="graph">
-        {error ? (
+        {errorMsg ? (
           <p>
-            <Dot type="error">Error</Dot>(<Code>{regex}</Code>): {error}
+            <Dot type="error">Error</Dot>(<Code>{regex}</Code>): {errorMsg}
           </p>
         ) : (
           <SvgContainer

@@ -1,13 +1,18 @@
 import React, { useEffect, useState } from "react"
-import { Button, Spacer } from "@geist-ui/react"
-import XCircle from "@geist-ui/react-icons/xCircle"
-import { useStorageState } from "@/utils/hooks"
+import { Button, Spacer, Textarea } from "@geist-ui/core"
+import XCircle from "@geist-ui/icons/xCircle"
+import { useLocalStorage } from "react-use"
 import produce from "immer"
-import Input from "@/components/input"
 import { gen } from "@/parser"
 import { astAtom, useAtomValue } from "@/atom"
+import { withDebounce } from "@/utils/hocs"
+const DebouncedTextarea = withDebounce<
+  HTMLTextAreaElement,
+  React.ComponentProps<typeof Textarea>
+>(Textarea)
+
 const TestTab: React.FC<{}> = () => {
-  const [cases, setCases] = useStorageState<string[]>("test-case", [""])
+  const [cases, setCases] = useLocalStorage<string[]>("test-case", [""])
   const ast = useAtomValue(astAtom)
   const [regExp, setRegExp] = useState<RegExp>(() => {
     const regex = gen(ast, false)
@@ -15,7 +20,7 @@ const TestTab: React.FC<{}> = () => {
   })
 
   useEffect(() => {
-    if (cases.length === 0) {
+    if (cases!.length === 0) {
       setCases([""])
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -29,40 +34,46 @@ const TestTab: React.FC<{}> = () => {
 
   const handleInputChange = (value: string, index: number) => {
     setCases(
-      produce(cases, (draft) => {
+      produce(cases!, (draft) => {
         draft[index] = value
       })
     )
   }
   const handleRemove = (index: number) => {
     setCases(
-      produce(cases, (draft) => {
+      produce(cases!, (draft) => {
         draft.splice(index, 1)
       })
     )
   }
   const handleAdd = () => {
     setCases(
-      produce(cases, (draft) => {
+      produce(cases!, (draft) => {
         draft.push("")
       })
     )
   }
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    e.stopPropagation()
+  }
+
   return (
     <>
       <div className="wrapper">
-        {cases.map((value, index) => (
+        {cases!.map((value, index) => (
           <React.Fragment key={index}>
             <div className="case-input">
-              <Input
+              <DebouncedTextarea
                 value={value}
                 width="215px"
-                status={regExp.test(value) ? "success" : "error"}
-                onChange={(value) => handleInputChange(value, index)}
+                rows={Math.min(3, value.split("\n").length)}
+                type={regExp.test(value) ? "success" : "error"}
+                onKeyDown={handleKeyDown}
+                onChange={(value: string) => handleInputChange(value, index)}
               />
               <XCircle cursor="pointer" onClick={() => handleRemove(index)} />
             </div>
-            <Spacer y={0.5} />
+            <Spacer h={0.5} />
           </React.Fragment>
         ))}
         <div className="btn">
@@ -77,6 +88,9 @@ const TestTab: React.FC<{}> = () => {
           display: flex;
           align-items: center;
           justify-content: space-between;
+        }
+        .case-input :global(textarea) {
+          min-height: auto;
         }
         .btn {
           display: flex;
